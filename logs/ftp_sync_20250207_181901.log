@@ -1,0 +1,2 @@
+2025-02-07 18:19:01,766 - INFO - Iniciando proceso de sincronización FTP
+2025-02-07 18:19:01,829 - ERROR - Error al conectar al FTP: [Errno 11001] getaddrinfo failed

@@ -1,0 +1,110 @@
+# Mi Aplicación ConexionFTP
+
+[![Versión](1.0)]
+
+"Establece una conexión FTP segura"
+
+## Características principales
+
+El script hace lo siguiente:
+
+Carga las variables de entorno desde el archivo .env
+Verifica que todas las variables necesarias estén presentes
+Establece una conexión FTP segura
+Sube recursivamente todos los archivos y carpetas desde la carpeta local especificada
+Mantiene la misma estructura de directorios en el servidor FTP
+Registra todas las operaciones y errores
+Cierra la conexión de manera segura
+
+Características importantes:
+
+Manejo de errores robusto
+Logging detallado de operaciones
+Creación automática de directorios en el servidor FTP
+Soporte para subdirectorios
+Manejo seguro de credenciales mediante variables de entorno
+
+## Pre-requisitos
+
+- Python 3.12.7
+
+## Instalación
+
+1.  Instala python en la version requerida, si aun no lo tienes instalado. recuerda darle permisos de administrador, señala ambas casillas en la instalacion (recomendacion)
+2.  Usando la consola de comandos, entra en la carpeta donde tienes el programa
+3.  usa el siguiente comando para instalar el entorno virtual. (Ejecuta un entorno de desarrollo omite este paso o el siguiente si quieres algo a nivel globar del pc)
+    python -m venv venv
+4.  Inicia el entorno virtual con el siguiente comando:
+    venv\Scripts\activate
+5.  Para instalar las dependencies requeridas usa el siguiente comando:
+    pip install -r requirements.txt
+
+Se instalara en el entorno virtual. (Si cambias a un entorno global recuerda que tienes que instalar ahi tus requerimientos.)
+Package Version
+
+---
+
+pip 25.0
+python-dotenv 1.0.1
+
+5.5
+En caso de una actualizacion nueva de dependencias o python, se mostrara algo como lo siguiente:
+python.exe -m pip install --upgrade pip
+Instalalo copiando y pegando para upgradear el entorno,
+
+## Uso
+
+6.  Ejecuta la aplicacion con el siguiente comando:
+    python connectionFTP.py
+
+
+Estructura de uso de log:
+
+## Estructura de logs:
+
+Se crea un directorio logs/ automáticamente
+Cada sesión genera dos archivos:
+
+ftp_sync_YYYYMMDD_HHMMSS.log: Log detallado de todas las operaciones
+sync_report_YYYYMMDD_HHMMSS.json: Reporte estadístico en formato JSON
+
+
+
+
+Información registrada:
+
+Archivos subidos exitosamente (ruta local y remota, tamaño, timestamp)
+Errores de subida (ruta, tipo de error, timestamp)
+Directorios creados
+Tiempos de inicio y fin
+Estadísticas generales
+
+
+Formato del log:
+
+Timestamps precisos
+Niveles de log (INFO, ERROR, DEBUG)
+Mensajes descriptivos
+Salida simultánea a archivo y consola
+
+
+Reporte JSON que incluye:
+
+Tiempo de inicio y fin
+Duración total
+Lista detallada de archivos subidos
+Lista de errores
+Directorios creados
+Estadísticas generales
+
+
+Resumen final que muestra:
+
+Cantidad de archivos subidos
+Cantidad de errores
+Directorios creados
+Tiempo total de ejecución
+
+## Licencia
+
+Derechos reservados ZedhGray
