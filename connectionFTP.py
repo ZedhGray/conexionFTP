@@ -1,22 +1,19 @@
 import os
-from ftplib import FTP
+from pathlib import Path
+import pysftp
 from dotenv import load_dotenv
 import sys
 import logging
-from pathlib import Path
 from datetime import datetime
 import json
 
 def setup_logging():
     """Configurar el sistema de logging"""
-    # Crear directorio de logs si no existe
     log_dir = Path('logs')
     log_dir.mkdir(exist_ok=True)
     
-    # Nombre del archivo de log con fecha
-    log_filename = f"logs/ftp_sync_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    log_filename = f"logs/sftp_sync_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     
-    # Configurar logging para archivo y consola
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
@@ -27,7 +24,7 @@ def setup_logging():
     )
     return logging.getLogger(__name__)
 
-class FTPSyncStats:
+class SFTPSyncStats:
     """Clase para mantener estadísticas de la sincronización"""
     def __init__(self):
         self.files_uploaded = []
@@ -61,31 +58,49 @@ def load_environment():
     """Cargar variables de entorno desde el archivo .env"""
     load_dotenv()
     
-    required_vars = ['FTP_HOST', 'FTP_USER', 'FTP_PASS', 'LOCAL_FOLDER', 'REMOTE_FOLDER']
-    missing_vars = [var for var in required_vars if not os.getenv(var)]
+    required_vars = ['SFTP_HOST', 'SFTP_USER', 'SFTP_PASS', 'LOCAL_FOLDER', 'REMOTE_FOLDER']
+    config = {}
     
+    # Verificar variables requeridas
+    missing_vars = [var for var in required_vars if not os.getenv(var)]
     if missing_vars:
         logger.error(f"Faltan las siguientes variables de entorno: {', '.join(missing_vars)}")
         sys.exit(1)
     
-    return {var: os.getenv(var) for var in required_vars}
+    # Cargar todas las variables
+    for var in required_vars:
+        config[var] = os.getenv(var)
+    
+    # Agregar puerto
+    config['SFTP_PORT'] = int(os.getenv('SFTP_PORT', '223'))
+    
+    return config
 
-def connect_ftp(config):
-    """Establecer conexión FTP"""
+def get_sftp_connection(config):
+    """Establecer conexión SFTP segura"""
     try:
-        ftp = FTP(config['FTP_HOST'])
-        ftp.login(config['FTP_USER'], config['FTP_PASS'])
-        logger.info(f"Conectado exitosamente a {config['FTP_HOST']}")
-        return ftp
+        cnopts = pysftp.CnOpts()
+        cnopts.hostkeys = None  # Deshabilitar verificación de hostkeys para coincidir con tu configuración
+        
+        sftp = pysftp.Connection(
+            host=config['SFTP_HOST'],
+            username=config['SFTP_USER'],
+            password=config['SFTP_PASS'],
+            port=config['SFTP_PORT'],
+            cnopts=cnopts
+        )
+        
+        logger.info(f"Conectado exitosamente a {config['SFTP_HOST']} usando SFTP")
+        return sftp
+        
     except Exception as e:
-        logger.error(f"Error al conectar al FTP: {str(e)}")
+        logger.error(f"Error al conectar al SFTP: {str(e)}")
         sys.exit(1)
 
-def upload_file(ftp, local_path, remote_path, stats):
-    """Subir un archivo al servidor FTP"""
+def upload_file(sftp, local_path, remote_path, stats):
+    """Subir un archivo al servidor SFTP"""
     try:
-        with open(local_path, 'rb') as file:
-            ftp.storbinary(f'STOR {remote_path}', file)
+        sftp.put(local_path, remote_path, preserve_mtime=True)
         logger.info(f"Archivo subido exitosamente: {remote_path}")
         stats.files_uploaded.append({
             'local_path': str(local_path),
@@ -103,24 +118,25 @@ def upload_file(ftp, local_path, remote_path, stats):
             'timestamp': datetime.now().isoformat()
         })
 
-def create_remote_directory(ftp, remote_dir, stats):
+def create_remote_directory(sftp, remote_dir, stats):
     """Crear directorio remoto y registrar la acción"""
     try:
-        ftp.mkd(remote_dir)
-        logger.info(f"Directorio creado: {remote_dir}")
-        stats.directories_created.append({
-            'path': remote_dir,
-            'timestamp': datetime.now().isoformat()
-        })
+        if not sftp.exists(remote_dir):
+            sftp.mkdir(remote_dir)
+            logger.info(f"Directorio creado: {remote_dir}")
+            stats.directories_created.append({
+                'path': remote_dir,
+                'timestamp': datetime.now().isoformat()
+            })
     except Exception as e:
-        logger.debug(f"Directorio ya existe o error al crear {remote_dir}: {str(e)}")
+        logger.debug(f"Error al crear directorio {remote_dir}: {str(e)}")
 
-def upload_directory(ftp, local_dir, remote_dir, stats):
-    """Subir todos los archivos de un directorio al FTP"""
+def upload_directory(sftp, local_dir, remote_dir, stats):
+    """Subir todos los archivos de un directorio al SFTP"""
     local_path = Path(local_dir)
     
     # Crear directorio remoto si no existe
-    create_remote_directory(ftp, remote_dir, stats)
+    create_remote_directory(sftp, remote_dir, stats)
     
     # Recorrer todos los archivos y subdirectorios
     for item in local_path.rglob('*'):
@@ -131,9 +147,9 @@ def upload_directory(ftp, local_dir, remote_dir, stats):
         if item.is_file():
             # Crear directorios remotos necesarios
             remote_item_dir = str(Path(remote_path).parent).replace('\\', '/')
-            create_remote_directory(ftp, remote_item_dir, stats)
+            create_remote_directory(sftp, remote_item_dir, stats)
             
-            upload_file(ftp, str(item), remote_path, stats)
+            upload_file(sftp, str(item), remote_path, stats)
 
 def main():
     """Función principal"""
@@ -141,22 +157,18 @@ def main():
     logger = setup_logging()
     
     # Inicializar estadísticas
-    stats = FTPSyncStats()
+    stats = SFTPSyncStats()
     
     try:
         # Cargar configuración
-        logger.info("Iniciando proceso de sincronización FTP")
+        logger.info("Iniciando proceso de sincronización SFTP")
         config = load_environment()
         
-        # Conectar al FTP
-        ftp = connect_ftp(config)
-        
-        # Subir archivos
-        upload_directory(ftp, config['LOCAL_FOLDER'], config['REMOTE_FOLDER'], stats)
-        
-        # Cerrar conexión
-        ftp.quit()
-        logger.info("Conexión FTP cerrada")
+        # Conectar al SFTP
+        with get_sftp_connection(config) as sftp:
+            # Subir archivos
+            upload_directory(sftp, config['LOCAL_FOLDER'], config['REMOTE_FOLDER'], stats)
+            logger.info("Conexión SFTP cerrada")
         
         # Guardar reporte
         report_file = stats.save_report()
