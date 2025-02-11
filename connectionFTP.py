@@ -1,13 +1,22 @@
 import os
 from pathlib import Path
 import pysftp
-from dotenv import load_dotenv
 import sys
 import logging
 from datetime import datetime
 import json
 import tkinter as tk
 from tkinter import messagebox
+
+# Configuration variables
+SFTP_CONFIG = {
+    'SFTP_HOST': 'ftp.sistemaicom.com',
+    'SFTP_USER': 'sisicom',
+    'SFTP_PASS': 'your_password',
+    'SFTP_PORT': 223,
+    'LOCAL_FOLDER': '/ruta/a/tu/carpeta/local',
+    'REMOTE_FOLDER': '/ruta/en/el/servidor'
+}
 
 def setup_logging():
     """Configurar el sistema de logging"""
@@ -56,27 +65,16 @@ class SFTPSyncStats:
             json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)
         return report_filename
 
-def load_environment():
-    """Cargar variables de entorno desde el archivo .env"""
-    load_dotenv()
-    
+def validate_config():
+    """Validar que todas las variables de configuración estén presentes"""
     required_vars = ['SFTP_HOST', 'SFTP_USER', 'SFTP_PASS', 'LOCAL_FOLDER', 'REMOTE_FOLDER']
-    config = {}
     
-    # Verificar variables requeridas
-    missing_vars = [var for var in required_vars if not os.getenv(var)]
+    missing_vars = [var for var in required_vars if not SFTP_CONFIG.get(var)]
     if missing_vars:
-        logger.error(f"Faltan las siguientes variables de entorno: {', '.join(missing_vars)}")
+        logger.error(f"Faltan las siguientes variables de configuración: {', '.join(missing_vars)}")
         sys.exit(1)
     
-    # Cargar todas las variables
-    for var in required_vars:
-        config[var] = os.getenv(var)
-    
-    # Agregar puerto
-    config['SFTP_PORT'] = int(os.getenv('SFTP_PORT', '223'))
-    
-    return config
+    return SFTP_CONFIG
 
 def get_sftp_connection(config):
     """Establecer conexión SFTP segura"""
@@ -162,9 +160,9 @@ def main():
     stats = SFTPSyncStats()
     
     try:
-        # Cargar configuración
+        # Validar configuración
         logger.info("Iniciando proceso de sincronización SFTP")
-        config = load_environment()
+        config = validate_config()
         
         # Conectar al SFTP
         with get_sftp_connection(config) as sftp:
