@@ -6,6 +6,8 @@ import sys
 import logging
 from datetime import datetime
 import json
+import tkinter as tk
+from tkinter import messagebox
 
 def setup_logging():
     """Configurar el sistema de logging"""
