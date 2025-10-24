@@ -1,4 +1,5 @@
-import paramiko
+# type: ignore
+import paramiko  # type: ignore
 from pathlib import Path
 
 # ============================================
