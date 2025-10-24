@@ -1,5 +1,4 @@
-# type: ignore
-import paramiko  # type: ignore
+import paramiko
 from pathlib import Path
 
 # ============================================
@@ -42,7 +41,8 @@ def create_remote_directory(sftp, remote_dir):
         sftp.mkdir(remote_dir)
 
 def upload_directory(sftp, local_dir, remote_dir):
-    """Subir todos los archivos al SFTP"""
+    """Subir todos los archivos al SFTP y borrar local si se subió exitosamente"""
+    import os
     local_path = Path(local_dir)
     
     create_remote_directory(sftp, remote_dir)
@@ -55,6 +55,7 @@ def upload_directory(sftp, local_dir, remote_dir):
             
             create_remote_directory(sftp, remote_item_dir)
             sftp.put(str(item), remote_path)
+            os.remove(str(item))
 
 def main():
     """Función principal"""

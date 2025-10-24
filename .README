@@ -1,28 +1,39 @@
-# Mi Aplicación ConexionFTP
+# Aplicación ConexionFTP
 
-[![Versión](2.0)]
+[![Versión](3.0)]
 
-"Establece una conexión SFTP segura usando Paramiko"
+"Herramientas para transferencia SFTP bidireccional usando Paramiko"
+
+## Descripción
+
+Este proyecto incluye dos scripts simples para transferencia de archivos vía SFTP:
+
+- **connectionFTP.py** - Envía archivos de tu PC al servidor
+- **ReceiveFTP.py** - Descarga archivos del servidor a tu PC
+
+Ambos scripts son minimalistas y directos: **solo conectan y transfieren archivos**.
 
 ## Características principales
 
-El script hace lo siguiente:
+### SendFTP.py (Enviar)
 
-- Establece una conexión SFTP segura usando **Paramiko**
-- Sube recursivamente todos los archivos y carpetas desde la carpeta local especificada
-- Mantiene la misma estructura de directorios en el servidor SFTP
-- Registra todas las operaciones y errores en archivos de log
-- Genera reportes estadísticos en formato JSON
-- Cierra la conexión de manera segura
+- Sube recursivamente todos los archivos y carpetas desde tu PC al servidor
+- Mantiene la misma estructura de directorios en el servidor
+- Crea directorios automáticamente en el servidor si no existen
 
-Características importantes:
+### ReceiveFTP.py (Recibir)
 
-- ✅ Manejo de errores robusto
-- ✅ Logging detallado de operaciones
-- ✅ Creación automática de directorios en el servidor SFTP
-- ✅ Soporte para subdirectorios
-- ✅ Configuración directa en el código (no requiere archivos .env)
-- ✅ Preserva tiempos de modificación de archivos
+- Descarga recursivamente todos los archivos y carpetas desde el servidor
+- Mantiene la misma estructura de directorios en tu PC
+- Crea directorios automáticamente en tu PC si no existen
+
+### Características comunes
+
+- ✅ Conexión SFTP segura usando **Paramiko**
+- ✅ Configuración directa en el código
+- ✅ Transferencia recursiva de carpetas
+- ✅ Sin logs, sin validaciones, sin estadísticas
+- ✅ Mínimo y funcional
 
 ## Pre-requisitos
 
@@ -55,128 +66,149 @@ python -m pip install --upgrade pip
 
 ## Configuración
 
-**Antes de ejecutar el programa**, abre el archivo `connectionFTP.py` y edita la sección de configuración (líneas 10-17):
+**Antes de ejecutar cualquier programa**, abre el archivo correspondiente y edita la sección de configuración:
+
+### Para SendFTP.py (Enviar archivos)
 
 ```python
 SFTP_CONFIG = {
     'SFTP_HOST': 'ftp.sistemaicom.com',        # Tu servidor SFTP
     'SFTP_USER': 'sisicom',                     # Tu usuario
     'SFTP_PASS': 'tu_contraseña_aqui',          # Tu contraseña
-    'SFTP_PORT': 223,                           # Puerto (normalmente 22 para SFTP)
-    'LOCAL_FOLDER': 'C:/ruta/a/tu/carpeta',     # Carpeta local a subir
+    'SFTP_PORT': 223,                           # Puerto (normalmente 22)
+    'LOCAL_FOLDER': 'C:/ruta/a/tu/carpeta',     # Carpeta local a enviar
     'REMOTE_FOLDER': '/ruta/en/el/servidor'     # Carpeta destino en servidor
 }
 ```
 
-**Importante:** Rellena tus datos reales en esta sección antes de ejecutar.
+### Para ReceiveFTP.py (Recibir archivos)
 
-## Uso
-
-Ejecuta la aplicación con el siguiente comando:
-
-```bash
-python connectionFTP.py
-```
-
-El programa subirá todos los archivos de tu carpeta local al servidor SFTP, manteniendo la estructura de carpetas.
-
-## Estructura de logs
-
-### Archivos generados automáticamente
-
-Se crea un directorio `logs/` automáticamente en la primera ejecución.
-
-Cada sesión genera dos archivos:
-
-1. **`sftp_sync_YYYYMMDD_HHMMSS.log`** - Log detallado de todas las operaciones
-2. **`sync_report_YYYYMMDD_HHMMSS.json`** - Reporte estadístico en formato JSON
-
-### Información registrada
-
-**Archivos subidos exitosamente:**
-
-- Ruta local y remota
-- Tamaño en bytes
-- Timestamp de subida
-
-**Errores de subida:**
-
-- Ruta del archivo
-- Tipo de error
-- Timestamp del error
-
-**Directorios creados:**
-
-- Ruta del directorio
-- Timestamp de creación
-
-**Estadísticas generales:**
-
-- Tiempo de inicio y fin
-- Duración total
-- Contadores de éxitos y errores
-
-### Formato del log
-
-- ⏰ Timestamps precisos
-- 📊 Niveles de log (INFO, ERROR, DEBUG)
-- 📝 Mensajes descriptivos
-- 🖥️ Salida simultánea a archivo y consola
-
-### Reporte JSON incluye
-
-```json
-{
-  "start_time": "2025-10-24T10:30:00",
-  "end_time": "2025-10-24T10:32:15",
-  "duration_seconds": 135.5,
-  "files_uploaded": [...],
-  "files_failed": [...],
-  "directories_created": [...],
-  "total_files_uploaded": 45,
-  "total_files_failed": 0,
-  "total_directories_created": 8
+```python
+SFTP_CONFIG = {
+    'SFTP_HOST': 'ftp.sistemaicom.com',        # Tu servidor SFTP
+    'SFTP_USER': 'sisicom',                     # Tu usuario
+    'SFTP_PASS': 'tu_contraseña_aqui',          # Tu contraseña
+    'SFTP_PORT': 223,                           # Puerto (normalmente 22)
+    'REMOTE_FOLDER': '/ruta/en/el/servidor',    # Carpeta origen en servidor
+    'LOCAL_FOLDER': 'C:/ruta/destino/local'     # Carpeta destino en tu PC
 }
 ```
 
-### Resumen final en consola
+**Importante:** Rellena tus datos reales antes de ejecutar.
 
-Al terminar, verás un resumen como este:
+## Uso
 
+### Enviar archivos al servidor
+
+```bash
+python SendFTP.py
 ```
-╔════════════════════════════════════════════╗
-║     RESUMEN DE SINCRONIZACIÓN SFTP        ║
-╚════════════════════════════════════════════╝
-✓ Archivos subidos exitosamente: 45
-✗ Archivos con errores: 0
-📁 Directorios creados: 8
-⏱ Tiempo total: 135.50 segundos
+
+Sube todos los archivos de `LOCAL_FOLDER` hacia `REMOTE_FOLDER` en el servidor.
+
+### Recibir archivos del servidor
+
+```bash
+python ReceiveFTP.py
 ```
+
+Descarga todos los archivos de `REMOTE_FOLDER` del servidor hacia `LOCAL_FOLDER` en tu PC.
+
+## Comportamiento de los scripts
+
+### SendFTP.py (Enviar)
+
+- **Flujo:** Tu PC → Servidor
+- **Lee de:** `LOCAL_FOLDER` (tu PC)
+- **Envía a:** `REMOTE_FOLDER` (servidor)
+- **NO borra** archivos del servidor
+- **Sobrescribe** archivos existentes en el servidor con tu versión local
+
+### ReceiveFTP.py (Recibir)
+
+- **Flujo:** Servidor → Tu PC
+- **Lee de:** `REMOTE_FOLDER` (servidor)
+- **Descarga a:** `LOCAL_FOLDER` (tu PC)
+- **NO borra** archivos del servidor
+- **NO borra** archivos locales que no estén en el servidor
+- **Sobrescribe** archivos locales existentes con la versión del servidor
 
 ## Notas importantes
 
-- El programa **NO borra** archivos del servidor, solo agrega o actualiza
-- Si un archivo ya existe en el servidor, se sobrescribe con la versión local
-- Los tiempos de modificación de archivos se preservan
-- Las conexiones se cierran automáticamente al terminar o en caso de error
+- ⚠️ **Ningún script borra archivos**, solo los sobrescribe si ya existen
+- ⚠️ Si la conexión falla, el programa simplemente termina sin hacer nada
+- ⚠️ No hay validaciones previas: si algo falla, Python mostrará el error
+- ✅ Las carpetas se crean automáticamente según sea necesario
+- ✅ Las conexiones se cierran automáticamente al terminar
 
-## Solución de problemas
+## Solución de problemas comunes
 
-**Error de conexión:**
+### Error "La importación paramiko no se ha podido resolver"
+
+Esto es un problema del linter de VS Code. Soluciones:
+
+1. **Seleccionar intérprete correcto:**
+
+   - Presiona `Ctrl + Shift + P`
+   - Escribe: "Python: Select Interpreter"
+   - Selecciona el Python donde instalaste paramiko
+
+2. **Verificar instalación:**
+
+   ```bash
+   pip list | findstr paramiko
+   ```
+
+3. **Reinstalar si es necesario:**
+   ```bash
+   pip install paramiko --force-reinstall
+   ```
+
+### Error de conexión
 
 - Verifica que el host, puerto, usuario y contraseña sean correctos
 - Asegúrate de tener acceso a internet
 - Confirma que el puerto SFTP esté abierto en el firewall
 
-**Error "carpeta local no existe":**
+### Error de rutas
 
-- Verifica que la ruta en `LOCAL_FOLDER` exista y sea correcta
-- Usa rutas absolutas (ej: `C:/Users/...`)
+- Usa rutas absolutas (ej: `C:/Users/...` o `/home/usuario/...`)
+- Verifica que las rutas existan (para enviar) o sean válidas (para recibir)
 
-**Error de permisos:**
+### Error de permisos
 
-- Verifica que tengas permisos de escritura en la carpeta remota
-- Confirma que tu usuario SFTP tenga los permisos necesarios
+- Verifica que tu usuario SFTP tenga permisos de lectura/escritura
+- Confirma que tengas permisos en las carpetas locales
+
+## Ejemplo de uso completo
+
+```python
+# Configuración para ENVIAR archivos
+SFTP_CONFIG = {
+    'SFTP_HOST': 'ftp.sistemaicom.com',
+    'SFTP_USER': 'sisicom',
+    'SFTP_PASS': 'mipassword123',
+    'SFTP_PORT': 223,
+    'LOCAL_FOLDER': 'C:/mis_archivos',
+    'REMOTE_FOLDER': '/home/usuario/backup'
+}
+# Ejecutar: python SendFTP.py
+# Resultado: Sube todo de C:/mis_archivos → /home/usuario/backup
+```
+
+```python
+# Configuración para RECIBIR archivos
+SFTP_CONFIG = {
+    'SFTP_HOST': 'ftp.sistemaicom.com',
+    'SFTP_USER': 'sisicom',
+    'SFTP_PASS': 'mipassword123',
+    'SFTP_PORT': 223,
+    'REMOTE_FOLDER': '/home/usuario/datos',
+    'LOCAL_FOLDER': 'C:/descargas'
+}
+# Ejecutar: python ReceiveFTP.py
+# Resultado: Descarga todo de /home/usuario/datos → C:/descargas
+```
 
 ## Licencia
 
