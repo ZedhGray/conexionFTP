@@ -1,0 +1,4 @@
+2025-02-11 11:30:26,881 - INFO - Iniciando proceso de sincronización SFTP
+2025-02-11 11:30:27,141 - INFO - Connected (version 2.0, client OpenSSH_8.7)
+2025-02-11 11:30:31,047 - INFO - Authentication (password) failed.
+2025-02-11 11:30:31,048 - ERROR - Error al conectar al SFTP: Authentication failed.

@@ -1,22 +1,23 @@
 import os
 from pathlib import Path
-import pysftp
+import paramiko
 import sys
 import logging
 from datetime import datetime
 import json
-import tkinter as tk
-from tkinter import messagebox
 
-# Configuration variables
+# ============================================
+# CONFIGURACIÓN - RELLENA TUS DATOS AQUÍ
+# ============================================
 SFTP_CONFIG = {
-    'SFTP_HOST': 'ftp.sistemaicom.com',
-    'SFTP_USER': 'sisicom',
-    'SFTP_PASS': 'your_password',
-    'SFTP_PORT': 223,
-    'LOCAL_FOLDER': '/ruta/a/tu/carpeta/local',
-    'REMOTE_FOLDER': '/ruta/en/el/servidor'
+    'SFTP_HOST': 'ftp.sistemaicom.com',        # Tu servidor FTP
+    'SFTP_USER': 'sisicom',                     # Tu usuario
+    'SFTP_PASS': 'tu_contraseña_aqui',          # Tu contraseña
+    'SFTP_PORT': 223,                           # Puerto (normalmente 22 para SFTP)
+    'LOCAL_FOLDER': 'C:/ruta/a/tu/carpeta',     # Carpeta local a subir
+    'REMOTE_FOLDER': '/ruta/en/el/servidor'     # Carpeta destino en servidor
 }
+# ============================================
 
 def setup_logging():
     """Configurar el sistema de logging"""
@@ -29,7 +30,7 @@ def setup_logging():
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler(log_filename),
+            logging.FileHandler(log_filename, encoding='utf-8'),
             logging.StreamHandler()
         ]
     )
@@ -74,33 +75,57 @@ def validate_config():
         logger.error(f"Faltan las siguientes variables de configuración: {', '.join(missing_vars)}")
         sys.exit(1)
     
+    # Verificar que la carpeta local exista
+    if not os.path.exists(SFTP_CONFIG['LOCAL_FOLDER']):
+        logger.error(f"La carpeta local no existe: {SFTP_CONFIG['LOCAL_FOLDER']}")
+        sys.exit(1)
+    
     return SFTP_CONFIG
 
 def get_sftp_connection(config):
-    """Establecer conexión SFTP segura"""
+    """Establecer conexión SFTP con Paramiko"""
     try:
-        cnopts = pysftp.CnOpts()
-        cnopts.hostkeys = None  # Deshabilitar verificación de hostkeys para coincidir con tu configuración
+        # Crear cliente SSH
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         
-        sftp = pysftp.Connection(
-            host=config['SFTP_HOST'],
+        # Conectar
+        ssh.connect(
+            hostname=config['SFTP_HOST'],
+            port=config['SFTP_PORT'],
             username=config['SFTP_USER'],
             password=config['SFTP_PASS'],
-            port=config['SFTP_PORT'],
-            cnopts=cnopts
+            look_for_keys=False,
+            allow_agent=False
         )
         
-        logger.info(f"Conectado exitosamente a {config['SFTP_HOST']} usando SFTP")
-        return sftp
+        # Abrir canal SFTP
+        sftp = ssh.open_sftp()
+        
+        logger.info(f"Conectado exitosamente a {config['SFTP_HOST']}:{config['SFTP_PORT']} usando SFTP")
+        return ssh, sftp
         
     except Exception as e:
         logger.error(f"Error al conectar al SFTP: {str(e)}")
         sys.exit(1)
 
+def remote_path_exists(sftp, path):
+    """Verificar si una ruta remota existe"""
+    try:
+        sftp.stat(path)
+        return True
+    except FileNotFoundError:
+        return False
+
 def upload_file(sftp, local_path, remote_path, stats):
     """Subir un archivo al servidor SFTP"""
     try:
-        sftp.put(local_path, remote_path, preserve_mtime=True)
+        sftp.put(local_path, remote_path)
+        
+        # Preservar tiempo de modificación
+        local_stat = os.stat(local_path)
+        sftp.utime(remote_path, (local_stat.st_atime, local_stat.st_mtime))
+        
         logger.info(f"Archivo subido exitosamente: {remote_path}")
         stats.files_uploaded.append({
             'local_path': str(local_path),
@@ -121,7 +146,12 @@ def upload_file(sftp, local_path, remote_path, stats):
 def create_remote_directory(sftp, remote_dir, stats):
     """Crear directorio remoto y registrar la acción"""
     try:
-        if not sftp.exists(remote_dir):
+        if not remote_path_exists(sftp, remote_dir):
+            # Crear directorios padre si no existen
+            parent_dir = str(Path(remote_dir).parent).replace('\\', '/')
+            if parent_dir != '/' and not remote_path_exists(sftp, parent_dir):
+                create_remote_directory(sftp, parent_dir, stats)
+            
             sftp.mkdir(remote_dir)
             logger.info(f"Directorio creado: {remote_dir}")
             stats.directories_created.append({
@@ -135,7 +165,7 @@ def upload_directory(sftp, local_dir, remote_dir, stats):
     """Subir todos los archivos de un directorio al SFTP"""
     local_path = Path(local_dir)
     
-    # Crear directorio remoto si no existe
+    # Crear directorio remoto base si no existe
     create_remote_directory(sftp, remote_dir, stats)
     
     # Recorrer todos los archivos y subdirectorios
@@ -159,16 +189,19 @@ def main():
     # Inicializar estadísticas
     stats = SFTPSyncStats()
     
+    ssh = None
+    sftp = None
+    
     try:
         # Validar configuración
         logger.info("Iniciando proceso de sincronización SFTP")
         config = validate_config()
         
         # Conectar al SFTP
-        with get_sftp_connection(config) as sftp:
-            # Subir archivos
-            upload_directory(sftp, config['LOCAL_FOLDER'], config['REMOTE_FOLDER'], stats)
-            logger.info("Conexión SFTP cerrada")
+        ssh, sftp = get_sftp_connection(config)
+        
+        # Subir archivos
+        upload_directory(sftp, config['LOCAL_FOLDER'], config['REMOTE_FOLDER'], stats)
         
         # Guardar reporte
         report_file = stats.save_report()
@@ -176,11 +209,13 @@ def main():
         
         # Mostrar resumen
         logger.info(f"""
-Resumen de sincronización:
-- Archivos subidos exitosamente: {len(stats.files_uploaded)}
-- Archivos con errores: {len(stats.files_failed)}
-- Directorios creados: {len(stats.directories_created)}
-- Tiempo total: {(datetime.now() - stats.start_time).total_seconds():.2f} segundos
+╔════════════════════════════════════════════╗
+║     RESUMEN DE SINCRONIZACIÓN SFTP        ║
+╚════════════════════════════════════════════╝
+✓ Archivos subidos exitosamente: {len(stats.files_uploaded)}
+✗ Archivos con errores: {len(stats.files_failed)}
+📁 Directorios creados: {len(stats.directories_created)}
+⏱ Tiempo total: {(datetime.now() - stats.start_time).total_seconds():.2f} segundos
 """)
         
     except Exception as e:
@@ -188,6 +223,15 @@ Resumen de sincronización:
         stats.end_time = datetime.now()
         stats.save_report()
         sys.exit(1)
+    
+    finally:
+        # Cerrar conexiones
+        if sftp:
+            sftp.close()
+            logger.info("Conexión SFTP cerrada")
+        if ssh:
+            ssh.close()
+            logger.info("Conexión SSH cerrada")
 
 if __name__ == "__main__":
     main()

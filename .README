@@ -1,109 +1,182 @@
 # Mi Aplicación ConexionFTP
 
-[![Versión](1.0)]
+[![Versión](2.0)]
 
-"Establece una conexión FTP segura"
+"Establece una conexión SFTP segura usando Paramiko"
 
 ## Características principales
 
 El script hace lo siguiente:
 
-Carga las variables de entorno desde el archivo .env
-Verifica que todas las variables necesarias estén presentes
-Establece una conexión FTP segura
-Sube recursivamente todos los archivos y carpetas desde la carpeta local especificada
-Mantiene la misma estructura de directorios en el servidor FTP
-Registra todas las operaciones y errores
-Cierra la conexión de manera segura
+- Establece una conexión SFTP segura usando **Paramiko**
+- Sube recursivamente todos los archivos y carpetas desde la carpeta local especificada
+- Mantiene la misma estructura de directorios en el servidor SFTP
+- Registra todas las operaciones y errores en archivos de log
+- Genera reportes estadísticos en formato JSON
+- Cierra la conexión de manera segura
 
 Características importantes:
 
-Manejo de errores robusto
-Logging detallado de operaciones
-Creación automática de directorios en el servidor FTP
-Soporte para subdirectorios
-Manejo seguro de credenciales mediante variables de entorno
+- ✅ Manejo de errores robusto
+- ✅ Logging detallado de operaciones
+- ✅ Creación automática de directorios en el servidor SFTP
+- ✅ Soporte para subdirectorios
+- ✅ Configuración directa en el código (no requiere archivos .env)
+- ✅ Preserva tiempos de modificación de archivos
 
 ## Pre-requisitos
 
-- Python 3.12.7
+- Python 3.8 o superior (recomendado Python 3.12.7)
 
 ## Instalación
 
-1.  Instala python en la version requerida, si aun no lo tienes instalado. recuerda darle permisos de administrador, señala ambas casillas en la instalacion (recomendacion)
-2.  Usando la consola de comandos, entra en la carpeta donde tienes el programa
-3.  usa el siguiente comando para instalar el entorno virtual. (Ejecuta un entorno de desarrollo omite este paso o el siguiente si quieres algo a nivel globar del pc)
-    python -m venv venv
-4.  Inicia el entorno virtual con el siguiente comando:
-    venv\Scripts\activate
-5.  Para instalar las dependencies requeridas usa el siguiente comando:
-    pip install -r requirements.txt
+### 1. Instalar Python
 
-Se instalara en el entorno virtual. (Si cambias a un entorno global recuerda que tienes que instalar ahi tus requerimientos.)
-Package Version
+Instala Python en la versión requerida si aún no lo tienes instalado.
 
----
+- Recuerda darle permisos de administrador
+- Marca ambas casillas en la instalación (recomendación: "Add Python to PATH" y "Install for all users")
 
-pip 25.0
-python-dotenv 1.0.1
+### 2. Instalar Paramiko
 
-5.5
-En caso de una actualizacion nueva de dependencias o python, se mostrara algo como lo siguiente:
-python.exe -m pip install --upgrade pip
-Instalalo copiando y pegando para upgradear el entorno,
+Abre la consola de comandos (CMD o PowerShell) y ejecuta:
+
+```bash
+pip install paramiko
+```
+
+Esto instalará Paramiko directamente en tu sistema.
+
+**Nota:** Si pip muestra un mensaje sugiriendo actualizar, puedes hacerlo con:
+
+```bash
+python -m pip install --upgrade pip
+```
+
+## Configuración
+
+**Antes de ejecutar el programa**, abre el archivo `connectionFTP.py` y edita la sección de configuración (líneas 10-17):
+
+```python
+SFTP_CONFIG = {
+    'SFTP_HOST': 'ftp.sistemaicom.com',        # Tu servidor SFTP
+    'SFTP_USER': 'sisicom',                     # Tu usuario
+    'SFTP_PASS': 'tu_contraseña_aqui',          # Tu contraseña
+    'SFTP_PORT': 223,                           # Puerto (normalmente 22 para SFTP)
+    'LOCAL_FOLDER': 'C:/ruta/a/tu/carpeta',     # Carpeta local a subir
+    'REMOTE_FOLDER': '/ruta/en/el/servidor'     # Carpeta destino en servidor
+}
+```
+
+**Importante:** Rellena tus datos reales en esta sección antes de ejecutar.
 
 ## Uso
 
-6.  Ejecuta la aplicacion con el siguiente comando:
-    python connectionFTP.py
+Ejecuta la aplicación con el siguiente comando:
 
+```bash
+python connectionFTP.py
+```
 
-Estructura de uso de log:
+El programa subirá todos los archivos de tu carpeta local al servidor SFTP, manteniendo la estructura de carpetas.
 
-## Estructura de logs:
+## Estructura de logs
 
-Se crea un directorio logs/ automáticamente
+### Archivos generados automáticamente
+
+Se crea un directorio `logs/` automáticamente en la primera ejecución.
+
 Cada sesión genera dos archivos:
 
-ftp_sync_YYYYMMDD_HHMMSS.log: Log detallado de todas las operaciones
-sync_report_YYYYMMDD_HHMMSS.json: Reporte estadístico en formato JSON
+1. **`sftp_sync_YYYYMMDD_HHMMSS.log`** - Log detallado de todas las operaciones
+2. **`sync_report_YYYYMMDD_HHMMSS.json`** - Reporte estadístico en formato JSON
 
+### Información registrada
 
+**Archivos subidos exitosamente:**
 
+- Ruta local y remota
+- Tamaño en bytes
+- Timestamp de subida
 
-Información registrada:
+**Errores de subida:**
 
-Archivos subidos exitosamente (ruta local y remota, tamaño, timestamp)
-Errores de subida (ruta, tipo de error, timestamp)
-Directorios creados
-Tiempos de inicio y fin
-Estadísticas generales
+- Ruta del archivo
+- Tipo de error
+- Timestamp del error
 
+**Directorios creados:**
 
-Formato del log:
+- Ruta del directorio
+- Timestamp de creación
 
-Timestamps precisos
-Niveles de log (INFO, ERROR, DEBUG)
-Mensajes descriptivos
-Salida simultánea a archivo y consola
+**Estadísticas generales:**
 
+- Tiempo de inicio y fin
+- Duración total
+- Contadores de éxitos y errores
 
-Reporte JSON que incluye:
+### Formato del log
 
-Tiempo de inicio y fin
-Duración total
-Lista detallada de archivos subidos
-Lista de errores
-Directorios creados
-Estadísticas generales
+- ⏰ Timestamps precisos
+- 📊 Niveles de log (INFO, ERROR, DEBUG)
+- 📝 Mensajes descriptivos
+- 🖥️ Salida simultánea a archivo y consola
 
+### Reporte JSON incluye
 
-Resumen final que muestra:
+```json
+{
+  "start_time": "2025-10-24T10:30:00",
+  "end_time": "2025-10-24T10:32:15",
+  "duration_seconds": 135.5,
+  "files_uploaded": [...],
+  "files_failed": [...],
+  "directories_created": [...],
+  "total_files_uploaded": 45,
+  "total_files_failed": 0,
+  "total_directories_created": 8
+}
+```
 
-Cantidad de archivos subidos
-Cantidad de errores
-Directorios creados
-Tiempo total de ejecución
+### Resumen final en consola
+
+Al terminar, verás un resumen como este:
+
+```
+╔════════════════════════════════════════════╗
+║     RESUMEN DE SINCRONIZACIÓN SFTP        ║
+╚════════════════════════════════════════════╝
+✓ Archivos subidos exitosamente: 45
+✗ Archivos con errores: 0
+📁 Directorios creados: 8
+⏱ Tiempo total: 135.50 segundos
+```
+
+## Notas importantes
+
+- El programa **NO borra** archivos del servidor, solo agrega o actualiza
+- Si un archivo ya existe en el servidor, se sobrescribe con la versión local
+- Los tiempos de modificación de archivos se preservan
+- Las conexiones se cierran automáticamente al terminar o en caso de error
+
+## Solución de problemas
+
+**Error de conexión:**
+
+- Verifica que el host, puerto, usuario y contraseña sean correctos
+- Asegúrate de tener acceso a internet
+- Confirma que el puerto SFTP esté abierto en el firewall
+
+**Error "carpeta local no existe":**
+
+- Verifica que la ruta en `LOCAL_FOLDER` exista y sea correcta
+- Usa rutas absolutas (ej: `C:/Users/...`)
+
+**Error de permisos:**
+
+- Verifica que tengas permisos de escritura en la carpeta remota
+- Confirma que tu usuario SFTP tenga los permisos necesarios
 
 ## Licencia
 
